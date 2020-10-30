@@ -1,6 +1,5 @@
 include("./byrnegreenwood.jl")
 using Plots
-# import ForwardDiff: Dual
 using Distributions
 
 function bs_option_g(S, K, T, sigma, r, eta::Float64 = +1.0)
@@ -109,9 +108,9 @@ Plots.savefig(string(folder, "\\", fig_name))
 
 function makeplots(S_vect, exercise="Eur", ext="")
     if exercise == "Eur"
-        bound_tree = x -> crr_eur_put(x, K, r, sigma, T, N, payoff)
+        bound_tree = x -> crr_eur(x, K, r, sigma, T, N, payoff)
     elseif exercise == "Am"
-        bound_tree = x -> crr_am_put(x, K, r, sigma, T, N, payoff)
+        bound_tree = x -> crr_am(x, K, r, sigma, T, N, payoff)
     end
 
     C = [bound_tree(Dual(x, 1.0, 0.0)) for x in S_vect]

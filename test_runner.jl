@@ -21,20 +21,20 @@ function make_plots(T, σ, r, K, S, N, ϵ, ex = "Eur", type = "Vanilla", zoom=tr
         payoff = x -> max(0, K - x)
         if ex == "Eur"
             bound_bs = x -> bs_option(x, K, T, σ, r, -1.0)
-            bound_crr = x -> crr_eur_put(x, K, r, σ, T, N, payoff)
+            bound_crr = x -> crr_eur(x, K, r, σ, T, N, payoff)
             suffix = "VanillaEur"
         elseif ex == "Am"
-            bound_crr = x -> crr_am_put(x, K, r, σ, T, N, payoff)
+            bound_crr = x -> crr_am(x, K, r, σ, T, N, payoff)
             suffix = "VanillaAm"
         end
     elseif type == "Digital"
         payoff = x -> heaviside(K - x)
         if ex == "Eur"
             bound_bs = x -> bs_digital(x, K, T, σ, r, -1.0)
-            bound_crr = x -> crr_eur_put(x, K, r, σ, T, N, payoff)
+            bound_crr = x -> crr_eur(x, K, r, σ, T, N, payoff)
             suffix = "DigitalEur"
         elseif ex == "Am"
-            bound_crr = x -> crr_am_put(x, K, r, σ, T, N, payoff)
+            bound_crr = x -> crr_am(x, K, r, σ, T, N, payoff)
             suffix = "DigitalAm"
         end
     end
@@ -185,21 +185,3 @@ make_plots(T, σ, r, K, S, N, ϵ, "Eur", "Digital", true)
 make_plots(T, σ, r, K, S, N, ϵ, "Am", "Digital", true)
 make_plots(T, σ, r, K, S, N, ϵ, "Am", "Digital", false)
 
-# payoff = x -> max(0, K - x)
-# bound_crr = x -> crr_central(x, K, r, σ, T, N, payoff)
-
-# Svect = [S*exp(z*sqrt(V)) for z in -2.5:0.10:2.5]
-# Svect = 95.0:0.05:105.0
-# g = [bound_crr(Svect[i])[3] for i in 1:length(Svect)]
-#
-# bound_crr_nc = x -> crr_eur_put(x, K, r, σ, T, N, payoff)
-# g_lb = [bump_dg(bound_crr_nc, Svect[i], ϵ)[2][2] for i = 1:length(Svect)]
-#
-# g_th = [bs_option(Svect[i], K, T, σ, r, -1.0)[3] for i = 1:length(Svect)]
-#
-# Plots.plot(Svect, [g, g_lb, g_th], labels=["LRM" "LRM D+B" "Black"])
-#
-# C_crr = [bound_crr_nc(Svect[i])[1] for i = 1:length(Svect)]
-# C_th = [bs_option(Svect[i], K, T, σ, r, -1.0)[1] for i = 1:length(Svect)]
-#
-# plot(Svect, 100*100*(C_crr - C_th)./C_th)

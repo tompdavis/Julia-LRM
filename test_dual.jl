@@ -27,4 +27,4 @@ N = 1000
 ϵ = 0.0001
 #like for a digital european?
 payoff = x -> heaviside(K - x)
-bound_crr = x -> crr_eur_put(x, K, r, σ, T, N, payoff)
+bound_crr = x -> crr_eur(x, K, r, σ, T, N, payoff)
