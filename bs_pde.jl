@@ -37,7 +37,7 @@ function create_uniform_mesh(S0, sigma, T, width, Nt)::uniform_pde_mesh
     X = range(xMin, xMax, step=dx)
     # The -dT is due to a sign error in my derivation
     # where I assumed forward stepping, I will correct
-    return uniform_pde_mesh(-dT, dx, Nt, length(X), X)
+    return uniform_pde_mesh(dT, dx, Nt, length(X), X)
 end
 
 
@@ -58,7 +58,7 @@ function bs_pde_fi( S0, T, r, q, sigma, payoff, umesh::uniform_pde_mesh)
     dT = umesh.dT
     C = Array{Float64}(undef, Nt, M)
     S = map(exp, umesh.X)
-    C[1,:] = map(payoff, S)
+    C[end,:] = map(payoff, S)
     cNaughtLast = payoff(exp(umesh.X[1] - dx))
     cMaxLast = payoff(exp(umesh.X[end] + dx))
   
@@ -68,26 +68,32 @@ function bs_pde_fi( S0, T, r, q, sigma, payoff, umesh::uniform_pde_mesh)
     b = 0.5*sigma*sigma*dT/dx/dx
     for i = 1:M
         if i == 1
-            A[i, 1    ] = (1 - r*dT - 2*b - (2*a - 2*b)*(-a/2 + b)/(1 - r*dT - 3/2*a + b)) 
-            A[i, 2    ] = (a/2 + b - (a/2 + b)^2/(1 - r*dT - 3/2*a + b))
-       elseif i == M
-            A[i, M - 1] = (-a/2 + b - (a/2 + b)^2/(1 - r*dT + 3/2*a + b))
-            A[i, M    ] = (1 -r*dT - 2*b +(a/2 + b)*(2*a + 2*b)/(1 - r*dT + 3/2*a + b))
+            # A[i, 1    ] = (1 - r*dT - 2*b - (2*a - 2*b)*(-a/2 + b)/(1 - r*dT - 3/2*a + b)) 
+            A[i, 1    ] = (1 + r*dT + 2*b + (a/2 - b)*(2*a - 2*b)/(1 + r*dT + 3/2*a - b))
+            # A[i, 2    ] = (a/2 + b - (a/2 + b)^2/(1 - r*dT - 3/2*a + b))
+            A[i, 2    ] = ((-a/2 - b) + (a/2 - b)*(-a/2 + b)/(1 + r*dT + 3/2*a - b))
+       elseif i == M  
+            A[i, M - 1] = ((a/2 - b) + (a/2 + b)*(-a/2 - b)/(1 + r*dT - 3/2*a - b))
+            # A[i, M - 1] = (-a/2 + b - (a/2 + b)^2/(1 - r*dT + 3/2*a + b))
+            A[i, M    ] = (1 + r*dT + 2*b + (-2*a - 2*b)*(-a/2 - b)/(1 + r*dT - 3/2*a - b))
+            # A[i, M    ] = (1 -r*dT - 2*b +(a/2 + b)*(2*a + 2*b)/(1 - r*dT + 3/2*a + b))
        else
-            A[i, i - 1] = (-a/2 + b)
-            A[i, i    ] = (1 - r*dT - 2*b)
-            A[i, i + 1] = (a/2 + b)
+            A[i, i - 1] = (a/2 - b)
+            A[i, i    ] = (1 + r*dT + 2*b)
+            A[i, i + 1] = (-a/2 - b)
+            # A[i, i - 1] = (-a/2 + b)
+            # A[i, i    ] = (1 - r*dT - 2*b)
+            # A[i, i + 1] = (a/2 + b)
         end
     end 
-    As = sparse(A)
-    for alpha = 2:Nt
-        g[1] = (-a/2 + b)/(1 - r*dT - 3/2*a + b)*cNaughtLast
-        g[end] = (a/2 + b)/(1 - r*dT + 3/2*a + b)*cMaxLast
-        C[alpha, :] = As\(C[alpha - 1, :] - g)
-        cNaughtLast = (cNaughtLast - (2*a - 2*b)*C[alpha,1] 
-                    - (-a/2 + b)*C[alpha,2])/(1 - r*dT - 3/2*a + b);
-        cMaxLast = (cMaxLast + (2*a + 2*b)*C[alpha,end] 
-                    - (a/2 + b)*C[alpha,end-1])/(1 - r*dT + 3/2*a + b);
+    for alpha = Nt:-1:2
+        g[1] = (a/2 - b)/(1 + r*dT + 3/2*a - b)*cNaughtLast
+        g[end] = (-a/2 - b)/(1 + r*dT - 3/2*a - b)*cMaxLast
+        C[alpha - 1, :] = A\(C[alpha, :] - g)
+        cNaughtLast = (cNaughtLast + (2*a - 2*b)*C[alpha - 1, 1] 
+                   + (-a/2 + b)*C[alpha - 1, 2])/(1 + r*dT + 3/2*a - b);
+        cMaxLast = (cMaxLast - (2*a + 2*b)*C[alpha - 1, end] 
+                    + (a/2 + b)*C[alpha - 1, end - 1])/(1 + r*dT - 3/2*a - b);
     end
     return [S, C]
 end
@@ -241,21 +247,21 @@ r = 0.05
 q = 0.0
 sigma = 0.2
 S0 = 90
-Nt = 100
-Nx = 100
+Nt = 1000
+Nx = 1000
 
 umesh = create_uniform_mesh(S0, sigma, T, 4, Nt)
-S, C = @time bs_pde_cn(S0, T, r, q, sigma, f, umesh)
-# S1, C1 = @time bs_pde_fi(S0, T, r, q, sigma, f, umesh)
+# S, C = @time bs_pde_cn(S0, T, r, q, sigma, f, umesh)
+S1, C1 = @time bs_pde_fi(S0, T, r, q, sigma, f, umesh)
+Plots.plot(S1, C1[1, :])
 
-genmesh = create_lrm_mesh(S0, sigma, T, 4, Nt)
-S2, C2 = @time bs_pde_cn(S0, T, r, q, sigma, f, genmesh)
+# genmesh = create_lrm_mesh(S0, sigma, T, 4, Nt)
+# S2, C2 = @time bs_pde_cn(S0, T, r, q, sigma, f, genmesh)
 
-Plots.plot(S2, C2[end,:])
-Plots.plot(genmesh.T, C2[:,1])
+# Plots.plot(genmesh.T, C2[:,1])
 
-bds = x -> bs_option(x, K, T, sigma, r)
-C_th = [y[1] for y in map(bds, S)]
+# bds = x -> bs_option(x, K, T, sigma, r)
+# C_th = [y[1] for y in map(bds, S)]
 
-Plots.plot(S2, [C2[end,:] C[end,:]])
-Plots.plot(S[1:end-1], (C2[end, 2:end] - C2[end, 1:end-1])./(S[2:end]-S[1:end-1]))
+# Plots.plot(S2, [C2[end,:] C[end,:]])
+# Plots.plot(S[1:end-1], (C2[end, 2:end] - C2[end, 1:end-1])./(S[2:end]-S[1:end-1]))
